@@ -1,4 +1,4 @@
-package com.codeaim.urlcheck.probe.model;
+package com.codeaim.urlcheck.probe.message;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -12,5 +12,6 @@ import java.time.Instant;
 @Accessors(chain = true)
 public class Activate implements Serializable
 {
+    private long correlationId;
     private Instant created;
 }

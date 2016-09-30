@@ -1,18 +1,16 @@
 package com.codeaim.urlcheck.probe.configuration;
 
-import com.codeaim.urlcheck.probe.utility.ResponseTimeInterceptor;
-import com.google.common.collect.ImmutableList;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.AsyncRestTemplate;
 
 @Configuration
 public class HttpConfiguration
 {
     @Bean
-    RestTemplate restTemplate() {
-        RestTemplate restTemplate = new RestTemplate();
-        restTemplate.setInterceptors(ImmutableList.of(new ResponseTimeInterceptor()));
-        return restTemplate;
+    AsyncRestTemplate asyncRestTemplate() {
+        AsyncRestTemplate asyncRestTemplate = new AsyncRestTemplate();
+        //asyncRestTemplate.setInterceptors(ImmutableList.of(new AsyncResponseTimeInterceptor()));
+        return asyncRestTemplate;
     }
 }

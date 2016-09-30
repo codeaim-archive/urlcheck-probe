@@ -1,11 +1,11 @@
 package com.codeaim.urlcheck.probe.task;
 
 import com.codeaim.urlcheck.probe.configuration.ProbeConfiguration;
+import com.codeaim.urlcheck.probe.message.Checks;
+import com.codeaim.urlcheck.probe.message.Results;
 import com.codeaim.urlcheck.probe.model.Check;
 import com.codeaim.urlcheck.probe.model.Result;
 import com.codeaim.urlcheck.probe.model.Status;
-import com.codeaim.urlcheck.probe.utility.Futures;
-import com.codeaim.urlcheck.probe.utility.Header;
 import com.codeaim.urlcheck.probe.utility.Queue;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,11 +14,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.AsyncRestTemplate;
 
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -26,93 +25,75 @@ import java.util.stream.IntStream;
 public class ProbeTask
 {
     private ProbeConfiguration probeConfiguration;
-    private RestTemplate restTemplate;
+    private AsyncRestTemplate asyncRestTemplate;
     private JmsTemplate jmsTemplate;
 
     @Autowired
     public ProbeTask(
             ProbeConfiguration probeConfiguration,
-            RestTemplate restTemplate,
+            AsyncRestTemplate asyncRestTemplate,
             JmsTemplate jmsTemplate
     )
     {
         this.probeConfiguration = probeConfiguration;
-        this.restTemplate = restTemplate;
+        this.asyncRestTemplate = asyncRestTemplate;
         this.jmsTemplate = jmsTemplate;
     }
 
-    @JmsListener(destination = Queue.ACQUIRED_CHECKS)
-    public void receiveMessage(Check[] checks)
-    {
-        Result[] results = mapResponsesToResults(requestCheckResponses(checks));
-
-        if (results.length > 0)
-        {
-            jmsTemplate.convertAndSend(
-                    Queue.CHECK_RESULTS,
-                    results
-            );
-        }
-
-    }
-
-    private List<Pair<Check, Optional<ResponseEntity<Void>>>> requestCheckResponses(Check[] checks)
+    @JmsListener(destination = Queue.ACQUIRED_CHECKS, concurrency = "1")
+    public void receiveMessage(Checks checks)
     {
         try
         {
-            List<Optional<ResponseEntity<Void>>> responses = Futures.complete(Arrays.stream(checks)
-                    .map(Check::getUrl)
-                    .map(url ->
-                            CompletableFuture.supplyAsync(() -> requestCheckResponse(url)))
-                    .collect(Collectors.toList()))
-                    .get();
+            System.out.println(checks.getCorrelationId() + ": ProbeTask received ACQUIRED_CHECKS message with " + checks.getChecks().length + " checks");
+            List<Optional<ResponseEntity<Void>>> responses = getResponses(checks);
+            List<Pair<Check, Optional<ResponseEntity<Void>>>> checkResponsePairs = getCheckResponsePairs(checks, responses);
+            Result[] results = getResults(checkResponsePairs, checks.getCorrelationId());
 
-            return IntStream
-                    .range(0, checks.length)
-                    .mapToObj(index -> Pair.of(checks[index], responses.get(index)))
-                    .collect(Collectors.toList());
+            if (results.length > 0)
+            {
+                System.out.println(checks.getCorrelationId() + ": ProbeTask sending CHECK_RESULTS message with " + results.length + " results");
+                jmsTemplate.convertAndSend(
+                        Queue.CHECK_RESULTS,
+                        new Results()
+                                .setCorrelationId(checks.getCorrelationId())
+                                .setResults(results));
+            } else
+            {
+                System.out.println(checks.getCorrelationId() + ": ProbeTask did not send CHECK_RESULTS message");
+            }
         } catch (Exception e)
         {
-            System.out.println("requestCheckResponses error");
             e.printStackTrace();
-            return Collections.emptyList();
+            System.out.println(checks.getCorrelationId() + ": ProbeTask MAJOR receiveMessage exception XXXXXXXXXXX");
         }
     }
 
-    private Optional<ResponseEntity<Void>> requestCheckResponse(String url)
+    private Result[] getResults(
+            List<Pair<Check, Optional<ResponseEntity<Void>>>> checkResponsePairs,
+            long correlationId
+    )
     {
-        System.out.println("Making request for " + url);
         try
         {
-            return Optional.of(restTemplate.getForEntity(url, Void.class));
-        } catch (Exception e)
-        {
-            System.out.println("requestCheckResponse error");
-            e.printStackTrace();
-            return Optional.empty();
-        }
-    }
-
-    private Result[] mapResponsesToResults(List<Pair<Check, Optional<ResponseEntity<Void>>>> checkResponsePairs)
-    {
-        return checkResponsePairs.stream()
-                .map(checkResponsePair -> new Result()
-                        .setCheckId(checkResponsePair
-                                .getKey()
-                                .getId())
-                        .setPreviousResultId(checkResponsePair
-                                .getKey()
-                                .getLatestResultId())
-                        .setStatus(checkResponsePair
-                                .getValue()
-                                .map(ResponseEntity::getStatusCode)
-                                .orElse(HttpStatus.INTERNAL_SERVER_ERROR)
-                                .is2xxSuccessful() ? Status.UP : Status.DOWN)
-                        .setProbe(probeConfiguration.getName())
-                        .setStatusCode(checkResponsePair
-                                .getValue()
-                                .map(response -> response.getStatusCode().value())
-                                .orElse(HttpStatus.INTERNAL_SERVER_ERROR.value()))
+            return checkResponsePairs.stream()
+                    .map(checkResponsePair -> new Result()
+                            .setCheckId(checkResponsePair
+                                    .getKey()
+                                    .getId())
+                            .setPreviousResultId(checkResponsePair
+                                    .getKey()
+                                    .getLatestResultId())
+                            .setStatus(checkResponsePair
+                                    .getValue()
+                                    .map(ResponseEntity::getStatusCode)
+                                    .orElse(HttpStatus.INTERNAL_SERVER_ERROR)
+                                    .is2xxSuccessful() ? Status.UP : Status.DOWN)
+                            .setProbe(probeConfiguration.getName())
+                            .setStatusCode(checkResponsePair
+                                    .getValue()
+                                    .map(response -> response.getStatusCode().value())
+                                    .orElse(HttpStatus.INTERNAL_SERVER_ERROR.value()))
 //                        .setResponseTime(checkResponsePair
 //                                .getValue()
 //                                .map(response -> Integer.parseInt(response
@@ -120,20 +101,72 @@ public class ProbeTask
 //                                        .get(Header.RESPONSE_TIME)
 //                                        .get(0)))
 //                                .orElse(null))
-                        .setChanged(!Objects
-                                .equals(
-                                        checkResponsePair
-                                                .getValue()
-                                                .map(ResponseEntity::getStatusCode)
-                                                .orElse(HttpStatus.INTERNAL_SERVER_ERROR)
-                                                .is2xxSuccessful() ? Status.UP : Status.DOWN,
-                                        checkResponsePair
-                                                .getKey()
-                                                .getStatus()))
-                        .setConfirmation(checkResponsePair
-                                .getKey()
-                                .isConfirming())
-                        .setCreated(Instant.now()))
-                .toArray(Result[]::new);
+                            .setChanged(!Objects
+                                    .equals(
+                                            checkResponsePair
+                                                    .getValue()
+                                                    .map(ResponseEntity::getStatusCode)
+                                                    .orElse(HttpStatus.INTERNAL_SERVER_ERROR)
+                                                    .is2xxSuccessful() ? Status.UP : Status.DOWN,
+                                            checkResponsePair
+                                                    .getKey()
+                                                    .getStatus()))
+                            .setConfirmation(checkResponsePair
+                                    .getKey()
+                                    .isConfirming())
+                            .setCreated(Instant.now()))
+                    .toArray(Result[]::new);
+        } catch (Exception e)
+        {
+            e.printStackTrace();
+            System.out.println(correlationId + ": ProbeTask MAJOR getResults exception XXXXXXXXXXX");
+            return new Result[0];
+        }
+    }
+
+    private List<Pair<Check, Optional<ResponseEntity<Void>>>> getCheckResponsePairs(Checks checks, List<Optional<ResponseEntity<Void>>> responses)
+    {
+        try
+        {
+            return IntStream
+                    .range(0, checks.getChecks().length)
+                    .mapToObj(index -> Pair.of(checks.getChecks()[index], responses.get(index)))
+                    .collect(Collectors.toList());
+        } catch (Exception e)
+        {
+            e.printStackTrace();
+            System.out.println(checks.getCorrelationId() + ": ProbeTask MAJOR getCheckResponsePairs exception XXXXXXXXXXX");
+            return Collections.emptyList();
+        }
+    }
+
+    private List<Optional<ResponseEntity<Void>>> getResponses(Checks checks)
+    {
+        try
+        {
+
+            return Arrays.stream(checks.getChecks())
+                    .map(x ->
+                    {
+                        System.out.println(checks.getCorrelationId() + ": ProbeTask making a request for " + x.getUrl());
+                        return asyncRestTemplate.getForEntity(x.getUrl(), Void.class);
+                    })
+                    .map(x ->
+                    {
+                        try
+                        {
+                            return Optional.of(x.get());
+                        } catch (Exception e)
+                        {
+                            System.out.println(checks.getCorrelationId() + ": ProbeTask exception making a request");
+                            return Optional.<ResponseEntity<Void>>empty();
+                        }
+                    }).collect(Collectors.toList());
+        } catch (Exception e)
+        {
+            e.printStackTrace();
+            System.out.println(checks.getCorrelationId() + ": ProbeTask MAJOR getResponses exception XXXXXXXXXXX");
+            return Collections.emptyList();
+        }
     }
 }
