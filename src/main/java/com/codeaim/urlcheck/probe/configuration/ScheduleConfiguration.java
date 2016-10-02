@@ -29,7 +29,7 @@ public class ScheduleConfiguration implements SchedulingConfigurer
     {
         if (!probeConfiguration.isScheduleDisabled())
         {
-            taskRegistrar.addFixedDelayTask(() -> this.activateTask.run(), 2000);
+            taskRegistrar.addFixedDelayTask(() -> this.activateTask.run(), probeConfiguration.getActivateDelay());
         }
     }
 }

@@ -19,7 +19,7 @@ public class Result
     private Status status;
     private String probe;
     private int statusCode;
-    private int responseTime;
+    private Integer responseTime;
     private boolean changed;
     private boolean confirmation;
     private Instant created;

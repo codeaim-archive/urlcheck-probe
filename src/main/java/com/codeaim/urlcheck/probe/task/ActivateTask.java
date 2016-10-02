@@ -8,6 +8,7 @@ import org.springframework.jms.core.JmsTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Component
 public class ActivateTask
@@ -17,18 +18,16 @@ public class ActivateTask
 
     @Autowired
     public ActivateTask(
-            JmsTemplate jmsTemplate,
-            LongSequenceGenerator longSequenceGenerator
+            JmsTemplate jmsTemplate
     )
     {
         this.jmsTemplate = jmsTemplate;
-        this.longSequenceGenerator = longSequenceGenerator;
     }
 
     public void run()
     {
         Activate activate = new Activate()
-                .setCorrelationId(longSequenceGenerator.getNextSequenceId())
+                .setCorrelationId(UUID.randomUUID().toString())
                 .setCreated(Instant.now());
 
         System.out.println(activate.getCorrelationId() + ": ActivateTask sending ACTIVATE_ELECTION message");

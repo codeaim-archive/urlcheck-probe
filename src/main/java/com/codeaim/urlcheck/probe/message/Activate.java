@@ -12,6 +12,6 @@ import java.time.Instant;
 @Accessors(chain = true)
 public class Activate implements Serializable
 {
-    private long correlationId;
+    private String correlationId;
     private Instant created;
 }

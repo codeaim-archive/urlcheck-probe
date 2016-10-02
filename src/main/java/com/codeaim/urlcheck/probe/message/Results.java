@@ -10,6 +10,6 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 public class Results
 {
-    private long correlationId;
+    private String correlationId;
     private Result[] results;
 }

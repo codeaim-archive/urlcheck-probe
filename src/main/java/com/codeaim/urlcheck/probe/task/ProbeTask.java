@@ -6,7 +6,11 @@ import com.codeaim.urlcheck.probe.message.Results;
 import com.codeaim.urlcheck.probe.model.Check;
 import com.codeaim.urlcheck.probe.model.Result;
 import com.codeaim.urlcheck.probe.model.Status;
+import com.codeaim.urlcheck.probe.utility.Futures;
 import com.codeaim.urlcheck.probe.utility.Queue;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -18,6 +22,8 @@ import org.springframework.web.client.AsyncRestTemplate;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -25,29 +31,30 @@ import java.util.stream.IntStream;
 public class ProbeTask
 {
     private ProbeConfiguration probeConfiguration;
-    private AsyncRestTemplate asyncRestTemplate;
+    private OkHttpClient httpClient;
+    private ExecutorService executorService;
     private JmsTemplate jmsTemplate;
 
     @Autowired
     public ProbeTask(
             ProbeConfiguration probeConfiguration,
-            AsyncRestTemplate asyncRestTemplate,
+            OkHttpClient httpClient,
+            ExecutorService executorService,
             JmsTemplate jmsTemplate
     )
     {
         this.probeConfiguration = probeConfiguration;
-        this.asyncRestTemplate = asyncRestTemplate;
+        this.httpClient = httpClient;
+        this.executorService = executorService;
         this.jmsTemplate = jmsTemplate;
     }
 
-    @JmsListener(destination = Queue.ACQUIRED_CHECKS, concurrency = "1")
+    @JmsListener(destination = Queue.ACQUIRED_CHECKS, concurrency = "5")
     public void receiveMessage(Checks checks)
     {
-        try
-        {
             System.out.println(checks.getCorrelationId() + ": ProbeTask received ACQUIRED_CHECKS message with " + checks.getChecks().length + " checks");
-            List<Optional<ResponseEntity<Void>>> responses = getResponses(checks);
-            List<Pair<Check, Optional<ResponseEntity<Void>>>> checkResponsePairs = getCheckResponsePairs(checks, responses);
+            List<Optional<Response>> responses = getResponses(checks);
+            List<Pair<Check, Optional<Response>>> checkResponsePairs = getCheckResponsePairs(checks, responses);
             Result[] results = getResults(checkResponsePairs, checks.getCorrelationId());
 
             if (results.length > 0)
@@ -62,69 +69,66 @@ public class ProbeTask
             {
                 System.out.println(checks.getCorrelationId() + ": ProbeTask did not send CHECK_RESULTS message");
             }
-        } catch (Exception e)
-        {
-            e.printStackTrace();
-            System.out.println(checks.getCorrelationId() + ": ProbeTask MAJOR receiveMessage exception XXXXXXXXXXX");
-        }
     }
 
     private Result[] getResults(
-            List<Pair<Check, Optional<ResponseEntity<Void>>>> checkResponsePairs,
-            long correlationId
+            List<Pair<Check, Optional<Response>>> checkResponsePairs,
+            String correlationId
     )
     {
-        try
-        {
             return checkResponsePairs.stream()
-                    .map(checkResponsePair -> new Result()
-                            .setCheckId(checkResponsePair
-                                    .getKey()
-                                    .getId())
-                            .setPreviousResultId(checkResponsePair
-                                    .getKey()
-                                    .getLatestResultId())
-                            .setStatus(checkResponsePair
-                                    .getValue()
-                                    .map(ResponseEntity::getStatusCode)
-                                    .orElse(HttpStatus.INTERNAL_SERVER_ERROR)
-                                    .is2xxSuccessful() ? Status.UP : Status.DOWN)
-                            .setProbe(probeConfiguration.getName())
-                            .setStatusCode(checkResponsePair
-                                    .getValue()
-                                    .map(response -> response.getStatusCode().value())
-                                    .orElse(HttpStatus.INTERNAL_SERVER_ERROR.value()))
-//                        .setResponseTime(checkResponsePair
-//                                .getValue()
-//                                .map(response -> Integer.parseInt(response
-//                                        .getHeaders()
-//                                        .get(Header.RESPONSE_TIME)
-//                                        .get(0)))
-//                                .orElse(null))
-                            .setChanged(!Objects
-                                    .equals(
-                                            checkResponsePair
-                                                    .getValue()
-                                                    .map(ResponseEntity::getStatusCode)
-                                                    .orElse(HttpStatus.INTERNAL_SERVER_ERROR)
-                                                    .is2xxSuccessful() ? Status.UP : Status.DOWN,
-                                            checkResponsePair
-                                                    .getKey()
-                                                    .getStatus()))
-                            .setConfirmation(checkResponsePair
-                                    .getKey()
-                                    .isConfirming())
-                            .setCreated(Instant.now()))
+                    .map(checkResponsePair -> {
+                        Result result = new Result()
+                                .setCheckId(checkResponsePair
+                                        .getKey()
+                                        .getId())
+                                .setPreviousResultId(checkResponsePair
+                                        .getKey()
+                                        .getLatestResultId())
+                                .setStatus(isSuccessful(checkResponsePair
+                                        .getValue()
+                                        .map(Response::code)
+                                        .orElse(HttpStatus.INTERNAL_SERVER_ERROR.value()))
+                                        ? Status.UP : Status.DOWN)
+                                .setProbe(probeConfiguration.getName())
+                                .setStatusCode(checkResponsePair
+                                        .getValue()
+                                        .map(Response::code)
+                                        .orElse(HttpStatus.INTERNAL_SERVER_ERROR.value()))
+                                .setResponseTime(checkResponsePair
+                                        .getValue()
+                                        .map(response -> (int) (response.receivedResponseAtMillis() - response.sentRequestAtMillis()))
+                                        .orElse(null))
+                                .setChanged(!Objects
+                                        .equals(
+                                                isSuccessful(checkResponsePair
+                                                        .getValue()
+                                                        .map(Response::code)
+                                                        .orElse(HttpStatus.INTERNAL_SERVER_ERROR.value()))
+                                                        ? Status.UP : Status.DOWN,
+                                                checkResponsePair
+                                                        .getKey()
+                                                        .getStatus()))
+                                .setConfirmation(checkResponsePair
+                                        .getKey()
+                                        .isConfirming())
+                                .setCreated(Instant.now());
+
+                        checkResponsePair
+                                .getValue()
+                                .ifPresent(Response::close);
+
+                        return result;
+                    })
                     .toArray(Result[]::new);
-        } catch (Exception e)
-        {
-            e.printStackTrace();
-            System.out.println(correlationId + ": ProbeTask MAJOR getResults exception XXXXXXXXXXX");
-            return new Result[0];
-        }
     }
 
-    private List<Pair<Check, Optional<ResponseEntity<Void>>>> getCheckResponsePairs(Checks checks, List<Optional<ResponseEntity<Void>>> responses)
+    private boolean isSuccessful(Integer integer)
+    {
+        return integer < 299 && integer > 199;
+    }
+
+    private List<Pair<Check, Optional<Response>>> getCheckResponsePairs(Checks checks, List<Optional<Response>> responses)
     {
         try
         {
@@ -140,33 +144,37 @@ public class ProbeTask
         }
     }
 
-    private List<Optional<ResponseEntity<Void>>> getResponses(Checks checks)
+    private List<Optional<Response>> getResponses(Checks checks)
     {
         try
         {
-
-            return Arrays.stream(checks.getChecks())
-                    .map(x ->
-                    {
-                        System.out.println(checks.getCorrelationId() + ": ProbeTask making a request for " + x.getUrl());
-                        return asyncRestTemplate.getForEntity(x.getUrl(), Void.class);
-                    })
-                    .map(x ->
-                    {
-                        try
-                        {
-                            return Optional.of(x.get());
-                        } catch (Exception e)
-                        {
-                            System.out.println(checks.getCorrelationId() + ": ProbeTask exception making a request");
-                            return Optional.<ResponseEntity<Void>>empty();
-                        }
-                    }).collect(Collectors.toList());
+            return Futures.complete(Arrays
+                    .stream(checks.getChecks())
+                    .map(Check::getUrl)
+                    .map(check -> new Request.Builder()
+                            .url(check)
+                            .build())
+                    .map(checkUrlRequest ->
+                            CompletableFuture.supplyAsync(() -> requestCheckResponse(checks.getCorrelationId(), checkUrlRequest), executorService))
+                    .collect(Collectors.toList()))
+                    .get();
         } catch (Exception e)
         {
             e.printStackTrace();
             System.out.println(checks.getCorrelationId() + ": ProbeTask MAJOR getResponses exception XXXXXXXXXXX");
             return Collections.emptyList();
+        }
+    }
+
+    private Optional<Response> requestCheckResponse(String correlationId, Request checkUrlRequest)
+    {
+        System.out.println(correlationId + ": ProbeTask making a request for " + checkUrlRequest.url().toString());
+        try
+        {
+            return Optional.of(httpClient.newCall(checkUrlRequest).execute());
+        } catch (Exception ex)
+        {
+            return Optional.empty();
         }
     }
 }
