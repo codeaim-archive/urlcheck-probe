@@ -11,13 +11,13 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Component
-public class ActivateTask
+public class ActivateElectionTask
 {
     private JmsTemplate jmsTemplate;
     private LongSequenceGenerator longSequenceGenerator;
 
     @Autowired
-    public ActivateTask(
+    public ActivateElectionTask(
             JmsTemplate jmsTemplate
     )
     {
@@ -30,7 +30,7 @@ public class ActivateTask
                 .setCorrelationId(UUID.randomUUID().toString())
                 .setCreated(Instant.now());
 
-        System.out.println(activate.getCorrelationId() + ": ActivateTask sending ACTIVATE_ELECTION message");
+        System.out.println(activate.getCorrelationId() + ": ActivateElectionTask sending ACTIVATE_ELECTION message");
 
         jmsTemplate.convertAndSend(
                 Queue.ACTIVATE_ELECTION,

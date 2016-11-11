@@ -1,6 +1,7 @@
 package com.codeaim.urlcheck.probe.configuration;
 
-import com.codeaim.urlcheck.probe.task.ActivateTask;
+import com.codeaim.urlcheck.probe.task.ActivateElectionTask;
+import com.codeaim.urlcheck.probe.task.ActivateResultExpiryTask;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.SchedulingConfigurer;
@@ -12,16 +13,19 @@ import org.springframework.stereotype.Component;
 public class ScheduleConfiguration implements SchedulingConfigurer
 {
     private ProbeConfiguration probeConfiguration;
-    private ActivateTask activateTask;
+    private ActivateElectionTask activateElectionTask;
+    private ActivateResultExpiryTask activateResultExpiryTask;
 
     @Autowired
     public ScheduleConfiguration(
             ProbeConfiguration probeConfiguration,
-            ActivateTask activateTask
+            ActivateElectionTask activateElectionTask,
+            ActivateResultExpiryTask activateResultExpiryTask
     )
     {
         this.probeConfiguration = probeConfiguration;
-        this.activateTask = activateTask;
+        this.activateElectionTask = activateElectionTask;
+        this.activateResultExpiryTask = activateResultExpiryTask;
     }
 
     @Override
@@ -29,7 +33,8 @@ public class ScheduleConfiguration implements SchedulingConfigurer
     {
         if (!probeConfiguration.isScheduleDisabled())
         {
-            taskRegistrar.addFixedDelayTask(() -> this.activateTask.run(), probeConfiguration.getActivateDelay());
+            taskRegistrar.addFixedDelayTask(() -> this.activateElectionTask.run(), probeConfiguration.getActivateElectionDelay());
+            taskRegistrar.addFixedDelayTask(() -> this.activateResultExpiryTask.run(), probeConfiguration.getActivateResultExpiryDelay());
         }
     }
 }
