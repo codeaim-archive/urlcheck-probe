@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
-import java.util.List;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -19,5 +19,5 @@ public class Check
     private Status status;
     private Long latestResultId;
     private boolean confirming;
-    private List<Header> headers;
+    private Set<Header> headers;
 }
