@@ -1,16 +1,16 @@
 package com.codeaim.urlcheck.probe.model;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
-import java.io.Serializable;
-import java.time.Instant;
+import java.util.List;
 
 @Getter
 @Setter
 @Accessors(chain = true)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Check
 {
     private long id;
@@ -19,4 +19,5 @@ public class Check
     private Status status;
     private Long latestResultId;
     private boolean confirming;
+    private List<Header> headers;
 }

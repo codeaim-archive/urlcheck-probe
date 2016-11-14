@@ -4,21 +4,21 @@ import com.codeaim.urlcheck.probe.configuration.ProbeConfiguration;
 import com.codeaim.urlcheck.probe.message.Checks;
 import com.codeaim.urlcheck.probe.message.Results;
 import com.codeaim.urlcheck.probe.model.Check;
+import com.codeaim.urlcheck.probe.model.Header;
 import com.codeaim.urlcheck.probe.model.Result;
 import com.codeaim.urlcheck.probe.model.Status;
 import com.codeaim.urlcheck.probe.utility.Futures;
 import com.codeaim.urlcheck.probe.utility.Queue;
+import okhttp3.Headers;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.AsyncRestTemplate;
 
 import java.time.Instant;
 import java.util.*;
@@ -52,23 +52,24 @@ public class ProbeTask
     @JmsListener(destination = Queue.ACQUIRED_CHECKS, concurrency = "5")
     public void receiveMessage(Checks checks)
     {
-            System.out.println(checks.getCorrelationId() + ": ProbeTask received ACQUIRED_CHECKS message with " + checks.getChecks().length + " checks");
-            List<Optional<Response>> responses = getResponses(checks);
-            List<Pair<Check, Optional<Response>>> checkResponsePairs = getCheckResponsePairs(checks, responses);
-            Result[] results = getResults(checkResponsePairs, checks.getCorrelationId());
+        System.out.println(checks.getCorrelationId() + ": ProbeTask received ACQUIRED_CHECKS message with " + checks.getChecks().length + " checks");
+        List<Optional<Response>> responses = getResponses(checks);
+        List<Pair<Check, Optional<Response>>> checkResponsePairs = getCheckResponsePairs(checks, responses);
+        Result[] results = getResults(checkResponsePairs, checks.getCorrelationId());
 
-            if (results.length > 0)
-            {
-                System.out.println(checks.getCorrelationId() + ": ProbeTask sending CHECK_RESULTS message with " + results.length + " results");
-                jmsTemplate.convertAndSend(
-                        Queue.CHECK_RESULTS,
-                        new Results()
-                                .setCorrelationId(checks.getCorrelationId())
-                                .setResults(results));
-            } else
-            {
-                System.out.println(checks.getCorrelationId() + ": ProbeTask did not send CHECK_RESULTS message");
-            }
+        if (results.length > 0)
+        {
+            System.out.println(checks.getCorrelationId() + ": ProbeTask sending CHECK_RESULTS message with " + results.length + " results");
+            jmsTemplate.convertAndSend(
+                    Queue.CHECK_RESULTS,
+                    new Results()
+                            .setCorrelationId(checks.getCorrelationId())
+                            .setResults(results)
+            );
+        } else
+        {
+            System.out.println(checks.getCorrelationId() + ": ProbeTask did not send CHECK_RESULTS message");
+        }
     }
 
     private Result[] getResults(
@@ -76,51 +77,53 @@ public class ProbeTask
             String correlationId
     )
     {
-            return checkResponsePairs.stream()
-                    .map(checkResponsePair -> {
-                        Result result = new Result()
-                                .setCheckId(checkResponsePair
-                                        .getKey()
-                                        .getId())
-                                .setPreviousResultId(checkResponsePair
-                                        .getKey()
-                                        .getLatestResultId())
-                                .setStatus(isSuccessful(checkResponsePair
-                                        .getValue()
-                                        .map(Response::code)
-                                        .orElse(HttpStatus.INTERNAL_SERVER_ERROR.value()))
-                                        ? Status.UP : Status.DOWN)
-                                .setProbe(probeConfiguration.getName())
-                                .setStatusCode(checkResponsePair
-                                        .getValue()
-                                        .map(Response::code)
-                                        .orElse(HttpStatus.INTERNAL_SERVER_ERROR.value()))
-                                .setResponseTime(checkResponsePair
-                                        .getValue()
-                                        .map(response -> (int) (response.receivedResponseAtMillis() - response.sentRequestAtMillis()))
-                                        .orElse(null))
-                                .setChanged(!Objects
-                                        .equals(
-                                                isSuccessful(checkResponsePair
-                                                        .getValue()
-                                                        .map(Response::code)
-                                                        .orElse(HttpStatus.INTERNAL_SERVER_ERROR.value()))
-                                                        ? Status.UP : Status.DOWN,
-                                                checkResponsePair
-                                                        .getKey()
-                                                        .getStatus()))
-                                .setConfirmation(checkResponsePair
-                                        .getKey()
-                                        .isConfirming())
-                                .setCreated(Instant.now());
+        return checkResponsePairs.stream()
+                .map(checkResponsePair ->
+                {
+                    Result result = new Result()
+                            .setCheckId(checkResponsePair
+                                    .getKey()
+                                    .getId())
+                            .setPreviousResultId(checkResponsePair
+                                    .getKey()
+                                    .getLatestResultId())
+                            .setStatus(isSuccessful(checkResponsePair
+                                    .getValue()
+                                    .map(Response::code)
+                                    .orElse(HttpStatus.INTERNAL_SERVER_ERROR.value()))
+                                    ? Status.UP : Status.DOWN)
+                            .setProbe(probeConfiguration.getName())
+                            .setStatusCode(checkResponsePair
+                                    .getValue()
+                                    .map(Response::code)
+                                    .orElse(HttpStatus.INTERNAL_SERVER_ERROR.value()))
+                            .setResponseTime(checkResponsePair
+                                    .getValue()
+                                    .map(response -> (int) (response.receivedResponseAtMillis() - response.sentRequestAtMillis()))
+                                    .orElse(null))
+                            .setChanged(!Objects
+                                    .equals(
+                                            isSuccessful(checkResponsePair
+                                                    .getValue()
+                                                    .map(Response::code)
+                                                    .orElse(HttpStatus.INTERNAL_SERVER_ERROR.value()))
+                                                    ? Status.UP : Status.DOWN,
+                                            checkResponsePair
+                                                    .getKey()
+                                                    .getStatus()
+                                    ))
+                            .setConfirmation(checkResponsePair
+                                    .getKey()
+                                    .isConfirming())
+                            .setCreated(Instant.now());
 
-                        checkResponsePair
-                                .getValue()
-                                .ifPresent(Response::close);
+                    checkResponsePair
+                            .getValue()
+                            .ifPresent(Response::close);
 
-                        return result;
-                    })
-                    .toArray(Result[]::new);
+                    return result;
+                })
+                .toArray(Result[]::new);
     }
 
     private boolean isSuccessful(Integer integer)
@@ -150,9 +153,13 @@ public class ProbeTask
         {
             return Futures.complete(Arrays
                     .stream(checks.getChecks())
-                    .map(Check::getUrl)
                     .map(check -> new Request.Builder()
-                            .url(check)
+                            .url(check.getUrl())
+                            .headers(Headers.of(check.getHeaders() != null ? check
+                                    .getHeaders()
+                                    .stream()
+                                    .collect(Collectors.toMap(Header::getName, Header::getValue)) :
+                                    Collections.emptyMap()))
                             .build())
                     .map(checkUrlRequest ->
                             CompletableFuture.supplyAsync(() -> requestCheckResponse(checks.getCorrelationId(), checkUrlRequest), executorService))
