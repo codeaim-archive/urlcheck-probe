@@ -168,7 +168,7 @@ public class ProbeTask
         } catch (Exception e)
         {
             e.printStackTrace();
-            System.out.println(checks.getCorrelationId() + ": ProbeTask MAJOR getResponses exception XXXXXXXXXXX");
+            System.out.println(checks.getCorrelationId() + ": ProbeTask MAJOR getResponses exception");
             return Collections.emptyList();
         }
     }
