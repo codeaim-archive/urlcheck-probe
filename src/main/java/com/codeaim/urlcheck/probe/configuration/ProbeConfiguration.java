@@ -17,9 +17,9 @@ public class ProbeConfiguration
     private int executorThreadPoolSize = 50;
     private boolean clustered;
     private boolean scheduleDisabled;
-    private String getCandidatesEndpoint = "http://localhost:6601/probe/candidate";
-    private String createResultsEndpoint = "http://localhost:6601/probe/result";
-    private String expireResultsEndpoint = "http://localhost:6601/probe/expire";
+    private String getCandidatesEndpoint = "http://api.urlcheck.io/probe/candidate";
+    private String createResultsEndpoint = "http://api.urlcheck.io/probe/result";
+    private String expireResultsEndpoint = "http://api.urlcheck.io/probe/expire";
     private int activateElectionDelay = 2000;
     private int activateResultExpiryDelay = 60000;
     private int connectTimeout = 2000;

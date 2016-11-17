@@ -92,7 +92,7 @@ public class ProbeTask
                                     .map(Response::code)
                                     .orElse(HttpStatus.INTERNAL_SERVER_ERROR.value()))
                                     ? Status.UP : Status.DOWN)
-                            .setProbe(probeConfiguration.getName())
+                            .setProbe(probeConfiguration.getUsername() == null ? probeConfiguration.getName() : probeConfiguration.getUsername())
                             .setStatusCode(checkResponsePair
                                     .getValue()
                                     .map(Response::code)
