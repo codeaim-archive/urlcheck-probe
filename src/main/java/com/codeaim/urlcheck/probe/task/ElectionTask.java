@@ -62,8 +62,8 @@ public class ElectionTask
                     .postForObject(
                             probeConfiguration.getGetCandidatesEndpoint(),
                             new HttpEntity<>(new Election()
-                                    .setName(probeConfiguration.getName())
-                                    .setClustered(probeConfiguration.isClustered())
+                                    .setName(probeConfiguration.getUsername() == null ? probeConfiguration.getName() : probeConfiguration.getUsername())
+                                    .setClustered(probeConfiguration.isClustered() && probeConfiguration.getUsername() == null)
                                     .setCandidateLimit(probeConfiguration.getCandidateLimit())
                                     .setUsername(probeConfiguration.getUsername())),
                             Check[].class);
