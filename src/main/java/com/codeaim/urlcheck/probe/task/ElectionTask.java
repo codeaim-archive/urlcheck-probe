@@ -64,7 +64,8 @@ public class ElectionTask
                             new HttpEntity<>(new Election()
                                     .setName(probeConfiguration.getName())
                                     .setClustered(probeConfiguration.isClustered())
-                                    .setCandidateLimit(probeConfiguration.getCandidateLimit())),
+                                    .setCandidateLimit(probeConfiguration.getCandidateLimit())
+                                    .setUsername(probeConfiguration.getUsername())),
                             Check[].class);
         } catch (Exception ex)
         {
