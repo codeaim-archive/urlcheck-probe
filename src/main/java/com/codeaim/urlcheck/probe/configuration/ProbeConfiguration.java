@@ -25,5 +25,6 @@ public class ProbeConfiguration
     private int connectTimeout = 2000;
     private int readTimeout = 2000;
     private int writeTimeout = 2000;
+    private String username;
 }
 

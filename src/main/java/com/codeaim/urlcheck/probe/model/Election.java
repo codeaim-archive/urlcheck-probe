@@ -15,4 +15,5 @@ public class Election
     private String name;
     private boolean clustered;
     private long candidateLimit;
+    private String username;
 }
