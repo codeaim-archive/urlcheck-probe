@@ -3,6 +3,8 @@ package com.codeaim.urlcheck.probe.task;
 import com.codeaim.urlcheck.probe.configuration.ProbeConfiguration;
 import com.codeaim.urlcheck.probe.message.Results;
 import com.codeaim.urlcheck.probe.utility.Queue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.jms.annotation.JmsListener;
@@ -12,6 +14,8 @@ import org.springframework.web.client.RestTemplate;
 @Component
 public class UpdateTask
 {
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
     private ProbeConfiguration probeConfiguration;
     private RestTemplate restTemplate;
 
@@ -28,7 +32,7 @@ public class UpdateTask
     @JmsListener(destination = Queue.CHECK_RESULTS)
     public void receiveMessage(Results results)
     {
-        System.out.println(results.getCorrelationId() + ": UpdateTask received CHECK_RESULTS message with " + results.getResults().length + " results");
+        logger.debug("UpdateTask received CHECK_RESULTS message with " + results.getResults().length + " results", results.getCorrelationId());
         if (results.getResults().length > 0)
             createResults(results);
     }
@@ -37,7 +41,7 @@ public class UpdateTask
     {
         try
         {
-            System.out.println(results.getCorrelationId() + ": UpdateTask create results");
+            logger.debug("UpdateTask create results", results.getCorrelationId());
             restTemplate
                     .postForObject(
                             probeConfiguration.getCreateResultsEndpoint(),
@@ -45,7 +49,7 @@ public class UpdateTask
                             Void.class);
         } catch (Exception ex)
         {
-            System.out.println(": UpdateTask exception thrown creating results");
+            logger.error("UpdateTask exception thrown creating results", results.getCorrelationId(), ex);
         }
     }
 }

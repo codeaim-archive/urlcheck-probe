@@ -6,6 +6,8 @@ import com.codeaim.urlcheck.probe.message.Checks;
 import com.codeaim.urlcheck.probe.model.Check;
 import com.codeaim.urlcheck.probe.model.Election;
 import com.codeaim.urlcheck.probe.utility.Queue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.jms.annotation.JmsListener;
@@ -16,6 +18,8 @@ import org.springframework.web.client.RestTemplate;
 @Component
 public class ElectionTask
 {
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
     private ProbeConfiguration probeConfiguration;
     private RestTemplate restTemplate;
     private JmsTemplate jmsTemplate;
@@ -35,13 +39,13 @@ public class ElectionTask
     @JmsListener(destination = Queue.ACTIVATE_ELECTION)
     public void receiveMessage(Activate activate)
     {
-        System.out.println(activate.getCorrelationId() + ": ElectionTask received ACTIVATE_ELECTION message");
-        Check[] checks = getCandidates(activate);
+        logger.trace("ElectionTask received ACTIVATE_ELECTION message", activate.getCorrelationId());
 
+        Check[] checks = getCandidates(activate);
 
         if (checks.length > 0)
         {
-            System.out.println(activate.getCorrelationId() + ": ElectionTask sending ACQUIRED_CHECKS message with " + checks.length + " checks");
+            logger.debug("ElectionTask sending ACQUIRED_CHECKS message with " + checks.length + " checks", activate.getCorrelationId());
             jmsTemplate.convertAndSend(
                     Queue.ACQUIRED_CHECKS,
                     new Checks()
@@ -49,7 +53,7 @@ public class ElectionTask
                             .setChecks(checks));
         } else
         {
-            System.out.println(activate.getCorrelationId() + ": ElectionTask did not send ACQUIRED_CHECKS message");
+            logger.trace("ElectionTask did not send ACQUIRED_CHECKS message", activate.getCorrelationId());
         }
     }
 
@@ -57,7 +61,7 @@ public class ElectionTask
     {
         try
         {
-            System.out.println(activate.getCorrelationId() + ": ElectionTask getting candidates");
+            logger.debug("ElectionTask getting candidates", activate.getCorrelationId());
             return restTemplate
                     .postForObject(
                             probeConfiguration.getGetCandidatesEndpoint(),
@@ -69,7 +73,7 @@ public class ElectionTask
                             Check[].class);
         } catch (Exception ex)
         {
-            System.out.println(activate.getCorrelationId() + ": ElectionTask exception thrown getting candidates");
+            logger.error("ElectionTask exception thrown getting candidates", activate.getCorrelationId(), ex);
             return new Check[0];
         }
     }

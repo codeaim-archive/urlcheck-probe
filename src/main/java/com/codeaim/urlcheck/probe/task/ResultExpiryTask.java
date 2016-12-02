@@ -4,6 +4,8 @@ import com.codeaim.urlcheck.probe.configuration.ProbeConfiguration;
 import com.codeaim.urlcheck.probe.message.Activate;
 import com.codeaim.urlcheck.probe.model.Expire;
 import com.codeaim.urlcheck.probe.utility.Queue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.jms.annotation.JmsListener;
@@ -13,6 +15,8 @@ import org.springframework.web.client.RestTemplate;
 @Component
 public class ResultExpiryTask
 {
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
     private ProbeConfiguration probeConfiguration;
     private RestTemplate restTemplate;
 
@@ -29,7 +33,7 @@ public class ResultExpiryTask
     @JmsListener(destination = Queue.ACTIVATE_RESULT_EXPIRY)
     public void receiveMessage(Activate activate)
     {
-        System.out.println(activate.getCorrelationId() + ": ResultExpiryTask received ACTIVATE_RESULT_EXPIRY message");
+        logger.debug("ResultExpiryTask received ACTIVATE_RESULT_EXPIRY message", activate.getCorrelationId());
 
         expireResults(activate);
     }
@@ -38,7 +42,7 @@ public class ResultExpiryTask
     {
         try
         {
-            System.out.println(activate.getCorrelationId() + ": ResultExpiryTask expiring results");
+            logger.debug("ResultExpiryTask expiring results", activate.getCorrelationId());
             restTemplate
                     .postForObject(
                             probeConfiguration.getExpireResultsEndpoint(),
@@ -47,7 +51,7 @@ public class ResultExpiryTask
                             Void.class);
         } catch (Exception ex)
         {
-            System.out.println(activate.getCorrelationId() + ": ResultExpiryTask exception thrown expiring results");
+            logger.error("ResultExpiryTask exception thrown expiring results", activate.getCorrelationId(), ex);
         }
     }
 }
