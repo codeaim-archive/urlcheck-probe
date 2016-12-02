@@ -61,7 +61,7 @@ public class ProbeTask
         logger.debug("ProbeTask received ACQUIRED_CHECKS message with " + checks.getChecks().length + " checks");
         List<Optional<Response>> responses = getResponses(checks);
         List<Pair<Check, Optional<Response>>> checkResponsePairs = getCheckResponsePairs(checks, responses);
-        Result[] results = getResults(checkResponsePairs, checks.getCorrelationId());
+        Result[] results = getResults(checkResponsePairs);
 
         if (results.length > 0)
         {
@@ -79,8 +79,7 @@ public class ProbeTask
     }
 
     private Result[] getResults(
-            List<Pair<Check, Optional<Response>>> checkResponsePairs,
-            String correlationId
+            List<Pair<Check, Optional<Response>>> checkResponsePairs
     )
     {
         return checkResponsePairs.stream()
@@ -158,16 +157,28 @@ public class ProbeTask
         {
             return Futures.complete(Arrays
                     .stream(checks.getChecks())
-                    .map(check -> new Request.Builder()
-                            .url(check.getUrl())
-                            .headers(Headers.of(check.getHeaders() != null ? check
-                                    .getHeaders()
-                                    .stream()
-                                    .collect(Collectors.toMap(Header::getName, Header::getValue)) :
-                                    Collections.emptyMap()))
-                            .build())
-                    .map(checkUrlRequest ->
-                            CompletableFuture.supplyAsync(() -> requestCheckResponse(checks.getCorrelationId(), checkUrlRequest), executorService))
+                    .map(check ->
+                            {
+                                Request checkUrlRequest = new Request.Builder()
+                                        .url(check.getUrl())
+                                        .headers(Headers.of(check.getHeaders() != null ? check
+                                                .getHeaders()
+                                                .stream()
+                                                .collect(Collectors.toMap(Header::getName, Header::getValue)) :
+                                                Collections.emptyMap()))
+                                        .build();
+
+                                return CompletableFuture.supplyAsync(
+                                        () -> requestCheckResponse(
+                                                checks.getCorrelationId(),
+                                                1L,
+                                                check.getId(),
+                                                checkUrlRequest
+                                        ),
+                                        executorService
+                                );
+                            }
+                    )
                     .collect(Collectors.toList()))
                     .get();
         } catch (Exception ex)
@@ -177,10 +188,19 @@ public class ProbeTask
         }
     }
 
-    private Optional<Response> requestCheckResponse(String correlationId, Request checkUrlRequest)
+    private Optional<Response> requestCheckResponse(
+            String correlationId,
+            long userId,
+            long checkId,
+            Request checkUrlRequest)
     {
         MDC.put("correlationId", correlationId);
-        logger.debug("ProbeTask making a request for " + checkUrlRequest.url().toString());
+        logger.debug(
+                "ProbeTask making a request for: { userId:{} checkId:{} url:{} }",
+                userId,
+                checkId,
+                checkUrlRequest.url().toString()
+        );
         try
         {
             return Optional.of(httpClient.newCall(checkUrlRequest).execute());
