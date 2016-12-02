@@ -63,7 +63,7 @@ public class ElectionTask
     {
         try
         {
-            logger.debug("ElectionTask getting candidates");
+            logger.trace("ElectionTask getting candidates");
             return restTemplate
                     .postForObject(
                             probeConfiguration.getGetCandidatesEndpoint(),
