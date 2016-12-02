@@ -14,6 +14,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jboss.logging.MDC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,14 +57,15 @@ public class ProbeTask
     @JmsListener(destination = Queue.ACQUIRED_CHECKS, concurrency = "5")
     public void receiveMessage(Checks checks)
     {
-        logger.debug("ProbeTask received ACQUIRED_CHECKS message with " + checks.getChecks().length + " checks", checks.getCorrelationId());
+        MDC.put("correlationId", checks.getCorrelationId());
+        logger.debug("ProbeTask received ACQUIRED_CHECKS message with " + checks.getChecks().length + " checks");
         List<Optional<Response>> responses = getResponses(checks);
         List<Pair<Check, Optional<Response>>> checkResponsePairs = getCheckResponsePairs(checks, responses);
         Result[] results = getResults(checkResponsePairs, checks.getCorrelationId());
 
         if (results.length > 0)
         {
-            logger.debug("ProbeTask sending CHECK_RESULTS message with " + results.length + " results", checks.getCorrelationId());
+            logger.debug("ProbeTask sending CHECK_RESULTS message with " + results.length + " results");
             jmsTemplate.convertAndSend(
                     Queue.CHECK_RESULTS,
                     new Results()
@@ -72,7 +74,7 @@ public class ProbeTask
             );
         } else
         {
-            logger.debug("ProbeTask did not send CHECK_RESULTS message", checks.getCorrelationId());
+            logger.debug("ProbeTask did not send CHECK_RESULTS message");
         }
     }
 
@@ -145,7 +147,7 @@ public class ProbeTask
                     .collect(Collectors.toList());
         } catch (Exception ex)
         {
-            logger.error("ProbeTask getCheckResponsePairs exception", checks.getCorrelationId(), ex);
+            logger.error("ProbeTask getCheckResponsePairs exception", ex);
             return Collections.emptyList();
         }
     }
@@ -165,19 +167,19 @@ public class ProbeTask
                                     Collections.emptyMap()))
                             .build())
                     .map(checkUrlRequest ->
-                            CompletableFuture.supplyAsync(() -> requestCheckResponse(checks.getCorrelationId(), checkUrlRequest), executorService))
+                            CompletableFuture.supplyAsync(() -> requestCheckResponse(checkUrlRequest), executorService))
                     .collect(Collectors.toList()))
                     .get();
         } catch (Exception ex)
         {
-            logger.error("ProbeTask getResponses exception", checks.getCorrelationId(), ex);
+            logger.error("ProbeTask getResponses exception", ex);
             return Collections.emptyList();
         }
     }
 
-    private Optional<Response> requestCheckResponse(String correlationId, Request checkUrlRequest)
+    private Optional<Response> requestCheckResponse(Request checkUrlRequest)
     {
-        logger.debug("ProbeTask making a request for " + checkUrlRequest.url().toString(), correlationId);
+        logger.debug("ProbeTask making a request for " + checkUrlRequest.url().toString());
         try
         {
             return Optional.of(httpClient.newCall(checkUrlRequest).execute());

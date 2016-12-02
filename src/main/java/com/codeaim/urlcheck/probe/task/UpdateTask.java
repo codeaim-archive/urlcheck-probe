@@ -3,6 +3,7 @@ package com.codeaim.urlcheck.probe.task;
 import com.codeaim.urlcheck.probe.configuration.ProbeConfiguration;
 import com.codeaim.urlcheck.probe.message.Results;
 import com.codeaim.urlcheck.probe.utility.Queue;
+import org.jboss.logging.MDC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +33,8 @@ public class UpdateTask
     @JmsListener(destination = Queue.CHECK_RESULTS)
     public void receiveMessage(Results results)
     {
-        logger.debug("UpdateTask received CHECK_RESULTS message with " + results.getResults().length + " results", results.getCorrelationId());
+        MDC.put("correlationId", results.getCorrelationId());
+        logger.debug("UpdateTask received CHECK_RESULTS message with " + results.getResults().length + " results");
         if (results.getResults().length > 0)
             createResults(results);
     }
@@ -41,7 +43,7 @@ public class UpdateTask
     {
         try
         {
-            logger.debug("UpdateTask create results", results.getCorrelationId());
+            logger.debug("UpdateTask create results");
             restTemplate
                     .postForObject(
                             probeConfiguration.getCreateResultsEndpoint(),
@@ -49,7 +51,7 @@ public class UpdateTask
                             Void.class);
         } catch (Exception ex)
         {
-            logger.error("UpdateTask exception thrown creating results", results.getCorrelationId(), ex);
+            logger.error("UpdateTask exception thrown creating results", ex);
         }
     }
 }
