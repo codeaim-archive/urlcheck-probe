@@ -14,6 +14,7 @@ import java.util.Set;
 public class Check
 {
     private long id;
+    private long userId;
     private String name;
     private String url;
     private Status status;

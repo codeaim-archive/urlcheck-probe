@@ -171,7 +171,7 @@ public class ProbeTask
                                 return CompletableFuture.supplyAsync(
                                         () -> requestCheckResponse(
                                                 checks.getCorrelationId(),
-                                                1L,
+                                                check.getUserId(),
                                                 check.getId(),
                                                 checkUrlRequest
                                         ),
