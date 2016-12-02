@@ -167,7 +167,7 @@ public class ProbeTask
                                     Collections.emptyMap()))
                             .build())
                     .map(checkUrlRequest ->
-                            CompletableFuture.supplyAsync(() -> requestCheckResponse(checkUrlRequest), executorService))
+                            CompletableFuture.supplyAsync(() -> requestCheckResponse(checks.getCorrelationId(), checkUrlRequest), executorService))
                     .collect(Collectors.toList()))
                     .get();
         } catch (Exception ex)
@@ -177,8 +177,9 @@ public class ProbeTask
         }
     }
 
-    private Optional<Response> requestCheckResponse(Request checkUrlRequest)
+    private Optional<Response> requestCheckResponse(String correlationId, Request checkUrlRequest)
     {
+        MDC.put("correlationId", correlationId);
         logger.debug("ProbeTask making a request for " + checkUrlRequest.url().toString());
         try
         {
