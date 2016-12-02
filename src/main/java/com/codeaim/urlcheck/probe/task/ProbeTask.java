@@ -171,8 +171,8 @@ public class ProbeTask
                                 return CompletableFuture.supplyAsync(
                                         () -> requestCheckResponse(
                                                 checks.getCorrelationId(),
-                                                check.getUserId(),
                                                 check.getId(),
+                                                check.getUserId(),
                                                 checkUrlRequest
                                         ),
                                         executorService
@@ -190,15 +190,15 @@ public class ProbeTask
 
     private Optional<Response> requestCheckResponse(
             String correlationId,
-            long userId,
             long checkId,
+            long userId,
             Request checkUrlRequest)
     {
         MDC.put("correlationId", correlationId);
         logger.debug(
-                "ProbeTask making a request for: { userId:{} checkId:{} url:{} }",
-                userId,
+                "ProbeTask making a request for: { checkId:\"{}\", userId:\"{}\", url:\"{}\" }",
                 checkId,
+                userId,
                 checkUrlRequest.url().toString()
         );
         try
