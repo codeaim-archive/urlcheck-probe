@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "urlcheck.probe")
 public class ProbeConfiguration
 {
-    private String name = "Standalone";
+    private String name = "probe-local";
     private int candidateLimit = 25;
     private int expireBatchSize = 50000;
     private int executorThreadPoolSize = 50;
