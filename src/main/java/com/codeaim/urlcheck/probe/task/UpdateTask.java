@@ -3,9 +3,9 @@ package com.codeaim.urlcheck.probe.task;
 import com.codeaim.urlcheck.probe.configuration.ProbeConfiguration;
 import com.codeaim.urlcheck.probe.message.Results;
 import com.codeaim.urlcheck.probe.utility.Queue;
-import org.jboss.logging.MDC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.jms.annotation.JmsListener;
@@ -33,6 +33,7 @@ public class UpdateTask
     @JmsListener(destination = Queue.CHECK_RESULTS)
     public void receiveMessage(Results results)
     {
+        MDC.put("name", probeConfiguration.getName());
         MDC.put("correlationId", results.getCorrelationId());
         logger.debug("UpdateTask received CHECK_RESULTS message with " + results.getResults().length + " results");
         if (results.getResults().length > 0)

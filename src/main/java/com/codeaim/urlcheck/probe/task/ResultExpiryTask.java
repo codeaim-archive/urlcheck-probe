@@ -4,9 +4,9 @@ import com.codeaim.urlcheck.probe.configuration.ProbeConfiguration;
 import com.codeaim.urlcheck.probe.message.Activate;
 import com.codeaim.urlcheck.probe.model.Expire;
 import com.codeaim.urlcheck.probe.utility.Queue;
-import org.jboss.logging.MDC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.jms.annotation.JmsListener;
@@ -34,6 +34,7 @@ public class ResultExpiryTask
     @JmsListener(destination = Queue.ACTIVATE_RESULT_EXPIRY)
     public void receiveMessage(Activate activate)
     {
+        MDC.put("name", probeConfiguration.getName());
         MDC.put("correlationId", activate.getCorrelationId());
         logger.debug("ResultExpiryTask received ACTIVATE_RESULT_EXPIRY message");
 

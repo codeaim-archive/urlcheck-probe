@@ -14,9 +14,9 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.apache.commons.lang3.tuple.Pair;
-import org.jboss.logging.MDC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.jms.annotation.JmsListener;
@@ -57,6 +57,7 @@ public class ProbeTask
     @JmsListener(destination = Queue.ACQUIRED_CHECKS, concurrency = "5")
     public void receiveMessage(Checks checks)
     {
+        MDC.put("name", probeConfiguration.getName());
         MDC.put("correlationId", checks.getCorrelationId());
         logger.debug("ProbeTask received ACQUIRED_CHECKS message with " + checks.getChecks().length + " checks");
         List<Optional<Response>> responses = getResponses(checks);
@@ -170,6 +171,7 @@ public class ProbeTask
 
                                 return CompletableFuture.supplyAsync(
                                         () -> requestCheckResponse(
+                                                probeConfiguration.getName(),
                                                 checks.getCorrelationId(),
                                                 check.getId(),
                                                 check.getUserId(),
@@ -189,11 +191,13 @@ public class ProbeTask
     }
 
     private Optional<Response> requestCheckResponse(
+            String probeName,
             String correlationId,
             long checkId,
             long userId,
             Request checkUrlRequest)
     {
+        MDC.put("name", probeName);
         MDC.put("correlationId", correlationId);
         logger.debug(
                 "ProbeTask making a request for: { checkId:\"{}\", userId:\"{}\", url:\"{}\" }",
