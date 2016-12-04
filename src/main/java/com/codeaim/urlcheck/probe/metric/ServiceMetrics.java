@@ -32,7 +32,7 @@ public class ServiceMetrics implements MetricSet
     public Map<String, Metric> getMetrics()
     {
         Map<String, Metric> metrics = new HashMap<>();
-        //metrics.put("memory", (Gauge) () -> runtime.totalMemory());
+        metrics.put("total.memory", (Gauge) () -> runtime.totalMemory());
         metrics.put("free", (Gauge) () -> runtime.freeMemory() + memoryDetails.getNonHeapMemoryUsage().getUsed());
         metrics.put("processors", (Gauge) () -> runtime.availableProcessors());
         metrics.put("instance.uptime", (Gauge) () -> System.currentTimeMillis() - this.timestamp);
