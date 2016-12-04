@@ -57,18 +57,22 @@ public class MetricReporter extends ScheduledReporter
 
         try
         {
-            logger.info("Metrics report: " + objectMapper.writeValueAsString(
-                    Stream.of(
-                            mapGauges(gauges),
-                            mapCounters(counters),
-                            mapHistograms(histograms),
-                            mapMeters(meters),
-                            mapTimers(timers))
+            String report = objectMapper.writeValueAsString(
+                    Stream
+                            .of(
+                                    mapGauges(gauges),
+                                    mapCounters(counters),
+                                    mapHistograms(histograms),
+                                    mapMeters(meters),
+                                    mapTimers(timers)
+                            )
                             .flatMap(x -> x)
                             .collect(Collectors.toMap(
                                     AbstractMap.SimpleEntry::getKey,
                                     AbstractMap.SimpleEntry::getValue
-                            ))));
+                            )));
+
+            logger.info("Metrics report: {}", report);
 
             counters.keySet().forEach(metricServices::reset);
 
