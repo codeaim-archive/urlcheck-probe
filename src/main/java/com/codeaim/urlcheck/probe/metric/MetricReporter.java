@@ -78,7 +78,7 @@ public class MetricReporter extends ScheduledReporter
         }
     }
 
-    private Stream<AbstractMap.SimpleEntry<String, String>> mapTimers(SortedMap<String, Timer> timers)
+    private Stream<AbstractMap.SimpleEntry<String, Object>> mapTimers(SortedMap<String, Timer> timers)
     {
         return timers
                 .entrySet()
@@ -89,47 +89,47 @@ public class MetricReporter extends ScheduledReporter
                 ));
     }
 
-    private Stream<AbstractMap.SimpleEntry<String, String>> mapMeters(SortedMap<String, Meter> meters)
+    private Stream<AbstractMap.SimpleEntry<String, Object>> mapMeters(SortedMap<String, Meter> meters)
     {
         return meters
                 .entrySet()
                 .stream()
                 .map(x -> new AbstractMap.SimpleEntry<>(
                         x.getKey(),
-                        String.valueOf(x.getValue().getCount())
+                        x.getValue().getCount()
                 ));
     }
 
-    private Stream<AbstractMap.SimpleEntry<String, String>> mapHistograms(SortedMap<String, Histogram> histograms)
+    private Stream<AbstractMap.SimpleEntry<String, Object>> mapHistograms(SortedMap<String, Histogram> histograms)
     {
         return histograms
                 .entrySet()
                 .stream()
                 .map(x -> new AbstractMap.SimpleEntry<>(
                         x.getKey(),
-                        String.valueOf(x.getValue().getCount())
+                        x.getValue().getCount()
                 ));
     }
 
-    private Stream<AbstractMap.SimpleEntry<String, String>> mapCounters(SortedMap<String, Counter> counters)
+    private Stream<AbstractMap.SimpleEntry<String, Object>> mapCounters(SortedMap<String, Counter> counters)
     {
         return counters
                 .entrySet()
                 .stream()
                 .map(x -> new AbstractMap.SimpleEntry<>(
                         x.getKey(),
-                        String.valueOf(x.getValue().getCount())
+                        x.getValue().getCount()
                 ));
     }
 
-    private Stream<AbstractMap.SimpleEntry<String, String>> mapGauges(SortedMap<String, Gauge> gauges)
+    private Stream<AbstractMap.SimpleEntry<String, Object>> mapGauges(SortedMap<String, Gauge> gauges)
     {
         return gauges
                 .entrySet()
                 .stream()
                 .map(x -> new AbstractMap.SimpleEntry<>(
                         x.getKey(),
-                        x.getValue().getValue().toString()
+                        x.getValue().getValue()
                 ));
     }
 }
