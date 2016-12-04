@@ -22,6 +22,7 @@ public class ProbeConfiguration
     private String expireResultsEndpoint = "http://api.urlcheck.io/probe/expire";
     private int activateElectionDelay = 2000;
     private int activateResultExpiryDelay = 60000;
+    private int metricReportDelay = 60000;
     private int connectTimeout = 2000;
     private int readTimeout = 2000;
     private int writeTimeout = 2000;
