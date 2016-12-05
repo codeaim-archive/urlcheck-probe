@@ -17,6 +17,9 @@ public class ProbeConfiguration
     private int executorThreadPoolSize = 50;
     private boolean clustered;
     private boolean scheduleDisabled;
+    private boolean activateElectionTaskDisabled;
+    private boolean activateResultExpiryTaskDisabled;
+    private boolean metricReportTaskDisabled;
     private String getCandidatesEndpoint = "http://api.urlcheck.io/probe/candidate";
     private String createResultsEndpoint = "http://api.urlcheck.io/probe/result";
     private String expireResultsEndpoint = "http://api.urlcheck.io/probe/expire";

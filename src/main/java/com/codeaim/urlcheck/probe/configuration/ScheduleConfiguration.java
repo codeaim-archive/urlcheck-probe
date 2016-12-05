@@ -14,18 +14,20 @@ import org.springframework.scheduling.annotation.Scheduled;
 @ConditionalOnProperty(name = "urlcheck.probe.scheduleDisabled", havingValue = "false", matchIfMissing = true)
 public class ScheduleConfiguration
 {
+    private ProbeConfiguration probeConfiguration;
     private ActivateElectionTask activateElectionTask;
     private ActivateResultExpiryTask activateResultExpiryTask;
     private MetricReportTask metricReportTask;
 
     @Autowired
     public ScheduleConfiguration(
+            ProbeConfiguration probeConfiguration,
             ActivateElectionTask activateElectionTask,
             ActivateResultExpiryTask activateResultExpiryTask,
             MetricReportTask metricReportTask
     )
     {
-
+        this.probeConfiguration = probeConfiguration;
         this.activateElectionTask = activateElectionTask;
         this.activateResultExpiryTask = activateResultExpiryTask;
         this.metricReportTask = metricReportTask;
@@ -34,18 +36,21 @@ public class ScheduleConfiguration
     @Scheduled(fixedDelayString = "${urlcheck.probe.activateElectionDelay}")
     public void activateElectionTask()
     {
-        activateElectionTask.run();
+        if(!probeConfiguration.isActivateElectionTaskDisabled())
+            activateElectionTask.run();
     }
 
     @Scheduled(fixedDelayString = "${urlcheck.probe.activateResultExpiryDelay}")
     public void activateResultExpiryTask()
     {
-        activateResultExpiryTask.run();
+        if(!probeConfiguration.isActivateResultExpiryTaskDisabled())
+            activateResultExpiryTask.run();
     }
 
     @Scheduled(fixedDelayString = "${urlcheck.probe.metricReportDelay}")
     public void metricReportTask()
     {
-        metricReportTask.run();
+        if (!probeConfiguration.isMetricReportTaskDisabled())
+            metricReportTask.run();
     }
 }
