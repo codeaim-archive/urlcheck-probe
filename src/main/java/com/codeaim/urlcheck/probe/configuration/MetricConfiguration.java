@@ -34,7 +34,9 @@ public class MetricConfiguration
                 dropwizardMetricServices,
                 metricRegistry()
         );
-        metrics.start(probeConfiguration.getMetricReportDelay(), TimeUnit.MILLISECONDS);
+        metrics.start(
+                probeConfiguration.getMetricReportDelay(),
+                TimeUnit.MILLISECONDS);
         return metrics;
     }
 }
