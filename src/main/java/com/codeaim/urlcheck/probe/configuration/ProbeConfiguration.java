@@ -20,9 +20,9 @@ public class ProbeConfiguration
     private String getCandidatesEndpoint = "http://api.urlcheck.io/probe/candidate";
     private String createResultsEndpoint = "http://api.urlcheck.io/probe/result";
     private String expireResultsEndpoint = "http://api.urlcheck.io/probe/expire";
-    private int activateElectionDelay = 2000;
-    private int activateResultExpiryDelay = 60000;
-    private int metricReportDelay = 60000;
+    private int activateElectionDelay;
+    private int activateResultExpiryDelay;
+    private int metricReportDelay;
     private int connectTimeout = 2000;
     private int readTimeout = 2000;
     private int writeTimeout = 2000;

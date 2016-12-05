@@ -1,70 +1,63 @@
-package com.codeaim.urlcheck.probe.metric;
+package com.codeaim.urlcheck.probe.task;
 
 import com.codahale.metrics.*;
-import com.codahale.metrics.Timer;
 import com.codeaim.urlcheck.probe.configuration.ProbeConfiguration;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jboss.logging.MDC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.actuate.metrics.dropwizard.DropwizardMetricServices;
+import org.springframework.stereotype.Component;
 
-import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.AbstractMap;
+import java.util.SortedMap;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class MetricReporter extends ScheduledReporter
+@Component
+public class MetricReportTask
 {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private final ProbeConfiguration probeConfiguration;
     private final ObjectMapper objectMapper;
     private final DropwizardMetricServices metricServices;
+    private final MetricRegistry metricRegistry;
 
-    public MetricReporter(
-            ProbeConfiguration probeConfiguration,
-            ObjectMapper objectMapper,
-            DropwizardMetricServices metricServices,
-            MetricRegistry metricRegistry
+    @Autowired
+    public MetricReportTask(
+            final ProbeConfiguration probeConfiguration,
+            final ObjectMapper objectMapper,
+            final DropwizardMetricServices metricServices,
+            final MetricRegistry metricRegistry
     )
     {
-        super(
-                metricRegistry,
-                probeConfiguration.getName(),
-                MetricFilter.ALL,
-                TimeUnit.SECONDS,
-                TimeUnit.SECONDS
-        );
-
         this.probeConfiguration = probeConfiguration;
         this.objectMapper = objectMapper;
         this.metricServices = metricServices;
+        this.metricRegistry = metricRegistry;
     }
 
-    @Override
-    public void report(
-            SortedMap<String, Gauge> gauges,
-            SortedMap<String, Counter> counters,
-            SortedMap<String, Histogram> histograms,
-            SortedMap<String, Meter> meters,
-            SortedMap<String, Timer> timers
-    )
+    public void run()
     {
         MDC.put("name", probeConfiguration.getName());
         MDC.put("correlationId", UUID.randomUUID().toString());
+
         logger.debug("MetricReporter received report request");
+
         try
         {
             String report = objectMapper.writeValueAsString(
                     Stream
                             .of(
-                                    mapGauges(gauges),
-                                    mapCounters(counters),
-                                    mapHistograms(histograms),
-                                    mapMeters(meters),
-                                    mapTimers(timers)
+                                    mapGauges(metricRegistry.getGauges()),
+                                    mapCounters(metricRegistry.getCounters()),
+                                    mapHistograms(metricRegistry.getHistograms()),
+                                    mapMeters(metricRegistry.getMeters()),
+                                    mapTimers(metricRegistry.getTimers())
                             )
                             .flatMap(x -> x)
                             .collect(Collectors.toMap(
@@ -74,13 +67,14 @@ public class MetricReporter extends ScheduledReporter
 
             logger.info("Metrics report: {}", report);
 
-            counters.keySet().forEach(metricServices::reset);
+            metricRegistry.getCounters().keySet().forEach(metricServices::reset);
 
         } catch (JsonProcessingException ex)
         {
             logger.error("MetricReporter exception thrown processing metrcs", ex);
         }
     }
+
 
     private Stream<AbstractMap.SimpleEntry<String, Object>> mapTimers(SortedMap<String, Timer> timers)
     {

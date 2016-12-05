@@ -2,39 +2,50 @@ package com.codeaim.urlcheck.probe.configuration;
 
 import com.codeaim.urlcheck.probe.task.ActivateElectionTask;
 import com.codeaim.urlcheck.probe.task.ActivateResultExpiryTask;
+import com.codeaim.urlcheck.probe.task.MetricReportTask;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.scheduling.annotation.SchedulingConfigurer;
-import org.springframework.scheduling.config.ScheduledTaskRegistrar;
-import org.springframework.stereotype.Component;
+import org.springframework.scheduling.annotation.Scheduled;
 
-@Component
+@Configuration
 @EnableScheduling
-public class ScheduleConfiguration implements SchedulingConfigurer
+@ConditionalOnProperty(name = "urlcheck.probe.scheduleDisabled", havingValue = "false", matchIfMissing = true)
+public class ScheduleConfiguration
 {
-    private ProbeConfiguration probeConfiguration;
     private ActivateElectionTask activateElectionTask;
     private ActivateResultExpiryTask activateResultExpiryTask;
+    private MetricReportTask metricReportTask;
 
     @Autowired
     public ScheduleConfiguration(
-            ProbeConfiguration probeConfiguration,
             ActivateElectionTask activateElectionTask,
-            ActivateResultExpiryTask activateResultExpiryTask
+            ActivateResultExpiryTask activateResultExpiryTask,
+            MetricReportTask metricReportTask
     )
     {
-        this.probeConfiguration = probeConfiguration;
+
         this.activateElectionTask = activateElectionTask;
         this.activateResultExpiryTask = activateResultExpiryTask;
+        this.metricReportTask = metricReportTask;
     }
 
-    @Override
-    public void configureTasks(ScheduledTaskRegistrar taskRegistrar)
+    @Scheduled(fixedDelayString = "${urlcheck.probe.activateElectionDelay}")
+    public void activateElectionTask()
     {
-        if (!probeConfiguration.isScheduleDisabled())
-        {
-            taskRegistrar.addFixedDelayTask(() -> this.activateElectionTask.run(), probeConfiguration.getActivateElectionDelay());
-            taskRegistrar.addFixedDelayTask(() -> this.activateResultExpiryTask.run(), probeConfiguration.getActivateResultExpiryDelay());
-        }
+        activateElectionTask.run();
+    }
+
+    @Scheduled(fixedDelayString = "${urlcheck.probe.activateResultExpiryDelay}")
+    public void activateResultExpiryTask()
+    {
+        activateResultExpiryTask.run();
+    }
+
+    @Scheduled(fixedDelayString = "${urlcheck.probe.metricReportDelay}")
+    public void metricReportTask()
+    {
+        metricReportTask.run();
     }
 }
