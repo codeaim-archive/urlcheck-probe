@@ -175,6 +175,7 @@ public class ProbeTask
                                                 checks.getCorrelationId(),
                                                 check.getId(),
                                                 check.getUserId(),
+                                                check.getName(),
                                                 checkUrlRequest
                                         ),
                                         executorService
@@ -195,14 +196,17 @@ public class ProbeTask
             String correlationId,
             long checkId,
             long userId,
-            Request checkUrlRequest)
+            String name,
+            Request checkUrlRequest
+    )
     {
         MDC.put("name", probeName);
         MDC.put("correlationId", correlationId);
         logger.debug(
-                "ProbeTask making a request for: { checkId:\"{}\", userId:\"{}\", url:\"{}\" }",
+                "ProbeTask making a request for: { \"checkId\":\"{}\", \"userId\":\"{}\",\"name\":\"{}\",\"url\":\"{}\" }",
                 checkId,
                 userId,
+                name,
                 checkUrlRequest.url().toString()
         );
         try
