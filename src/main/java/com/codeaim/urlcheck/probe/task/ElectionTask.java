@@ -44,7 +44,7 @@ public class ElectionTask
         MDC.put("correlationId", activate.getCorrelationId());
         logger.trace("ElectionTask received ACTIVATE_ELECTION message");
 
-        Check[] checks = getCandidates(activate);
+        Check[] checks = getCandidates();
 
         if (checks.length > 0)
         {
@@ -60,7 +60,7 @@ public class ElectionTask
         }
     }
 
-    private Check[] getCandidates(Activate activate)
+    private Check[] getCandidates()
     {
         try
         {
