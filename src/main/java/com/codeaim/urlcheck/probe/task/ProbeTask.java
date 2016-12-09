@@ -191,7 +191,7 @@ public class ProbeTask
         }
     }
 
-    private Optional<Response> requestCheckResponse(
+    public Optional<Response> requestCheckResponse(
             String probeName,
             String correlationId,
             long checkId,

@@ -60,7 +60,7 @@ public class ElectionTask
         }
     }
 
-    private Check[] getCandidates()
+    public Check[] getCandidates()
     {
         try
         {
