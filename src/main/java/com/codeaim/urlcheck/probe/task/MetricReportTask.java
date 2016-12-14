@@ -67,7 +67,15 @@ public class MetricReportTask
 
             logger.info("Metrics report: {}", report);
 
-            metricRegistry.getCounters().keySet().forEach(metricServices::reset);
+            metricRegistry
+                    .getCounters()
+                    .keySet()
+                    .forEach(metricServices::reset);
+
+            metricRegistry
+                    .getCounters()
+                    .values()
+                    .forEach(x -> x.dec(x.getCount()));
 
         } catch (JsonProcessingException ex)
         {

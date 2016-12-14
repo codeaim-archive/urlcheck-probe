@@ -1,5 +1,6 @@
 package com.codeaim.urlcheck.probe.task;
 
+import com.codeaim.urlcheck.probe.client.CheckClient;
 import com.codeaim.urlcheck.probe.configuration.ProbeConfiguration;
 import com.codeaim.urlcheck.probe.message.Checks;
 import com.codeaim.urlcheck.probe.message.Results;
@@ -10,7 +11,6 @@ import com.codeaim.urlcheck.probe.model.Status;
 import com.codeaim.urlcheck.probe.utility.Futures;
 import com.codeaim.urlcheck.probe.utility.Queue;
 import okhttp3.Headers;
-import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.apache.commons.lang3.tuple.Pair;
@@ -36,20 +36,20 @@ public class ProbeTask
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private ProbeConfiguration probeConfiguration;
-    private OkHttpClient httpClient;
+    private CheckClient checkClient;
     private ExecutorService executorService;
     private JmsTemplate jmsTemplate;
 
     @Autowired
     public ProbeTask(
             ProbeConfiguration probeConfiguration,
-            OkHttpClient httpClient,
+            CheckClient checkClient,
             ExecutorService executorService,
             JmsTemplate jmsTemplate
     )
     {
         this.probeConfiguration = probeConfiguration;
-        this.httpClient = httpClient;
+        this.checkClient = checkClient;
         this.executorService = executorService;
         this.jmsTemplate = jmsTemplate;
     }
@@ -170,7 +170,7 @@ public class ProbeTask
                                         .build();
 
                                 return CompletableFuture.supplyAsync(
-                                        () -> requestCheckResponse(
+                                        () -> checkClient.requestCheckResponse(
                                                 probeConfiguration.getName(),
                                                 checks.getCorrelationId(),
                                                 check.getId(),
@@ -188,33 +188,6 @@ public class ProbeTask
         {
             logger.error("ProbeTask getResponses exception", ex);
             return Collections.emptyList();
-        }
-    }
-
-    public Optional<Response> requestCheckResponse(
-            String probeName,
-            String correlationId,
-            long checkId,
-            long userId,
-            String name,
-            Request checkUrlRequest
-    )
-    {
-        MDC.put("name", probeName);
-        MDC.put("correlationId", correlationId);
-        logger.debug(
-                "ProbeTask making a request for: { \"checkId\":\"{}\", \"userId\":\"{}\",\"name\":\"{}\",\"url\":\"{}\" }",
-                checkId,
-                userId,
-                name,
-                checkUrlRequest.url().toString()
-        );
-        try
-        {
-            return Optional.of(httpClient.newCall(checkUrlRequest).execute());
-        } catch (Exception ex)
-        {
-            return Optional.empty();
         }
     }
 }

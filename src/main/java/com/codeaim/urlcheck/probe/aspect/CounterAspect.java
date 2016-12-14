@@ -2,14 +2,11 @@ package com.codeaim.urlcheck.probe.aspect;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
-import com.codeaim.urlcheck.probe.task.*;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import static com.codahale.metrics.MetricRegistry.name;
 
 @Aspect
 @Component
@@ -29,14 +26,14 @@ public class CounterAspect
            MetricRegistry metricRegistry
     )
     {
-        this.activateElections = metricRegistry.counter(name(ActivateElectionTask.class, "activate-election"));
-        this.activateResultExpiries = metricRegistry.counter(name(ActivateResultExpiryTask.class, "activate-result-expiry"));
-        this.getCandidates = metricRegistry.counter(name(ElectionTask.class, "get-candidates"));
-        this.metricReports = metricRegistry.counter(name(MetricReportTask.class, "metric-report"));
-        this.acquiredChecks = metricRegistry.counter(name(ProbeTask.class, "acquired-checks"));
-        this.requestCheckResponses = metricRegistry.counter(name(ProbeTask.class, "request-check-response"));
-        this.resultExpiry = metricRegistry.counter(name(ResultExpiryTask.class, "result-expiry"));
-        this.update = metricRegistry.counter(name(UpdateTask.class, "update"));
+        this.activateElections = metricRegistry.counter("activate-election");
+        this.activateResultExpiries = metricRegistry.counter("activate-result-expiry");
+        this.getCandidates = metricRegistry.counter("get-candidates");
+        this.metricReports = metricRegistry.counter("metric-report");
+        this.acquiredChecks = metricRegistry.counter("acquired-checks");
+        this.requestCheckResponses = metricRegistry.counter("request-check-response");
+        this.resultExpiry = metricRegistry.counter("result-expiry");
+        this.update = metricRegistry.counter("update");
     }
 
     @Around("execution(* com.codeaim.urlcheck.probe.task.ActivateElectionTask.run(..))")
@@ -53,8 +50,8 @@ public class CounterAspect
         return proceedingJoinPoint.proceed();
     }
 
-    @Around("execution(* com.codeaim.urlcheck.probe.task.ElectionTask.getCandidates(..))")
-    public Object aroundElectionTaskGetCandidates(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
+    @Around("execution(* com.codeaim.urlcheck.probe.client.ApiClient.getCandidates(..))")
+    public Object aroundApiClientGetCandidates(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
     {
         getCandidates.inc();
         return proceedingJoinPoint.proceed();
@@ -74,8 +71,8 @@ public class CounterAspect
         return proceedingJoinPoint.proceed();
     }
 
-    @Around("execution(* com.codeaim.urlcheck.probe.task.ProbeTask.requestCheckResponse(..))")
-    public Object aroundProbeTaskRequestCheckResponse(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
+    @Around("execution(* com.codeaim.urlcheck.probe.client.CheckClient.requestCheckResponse(..))")
+    public Object aroundCheckClientRequestCheckResponse(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
     {
         requestCheckResponses.inc();
         return proceedingJoinPoint.proceed();
