@@ -106,19 +106,19 @@ public class MetricReportTask
                                 .entrySet()
                                 .stream()
                                 .map(x -> new AbstractMap.SimpleEntry<>(
-                                        x.getKey() + "-mean",
+                                        x.getKey() + "-mean-time",
                                         (Object) TimeUnit.NANOSECONDS.toMillis((long) x.getValue().getSnapshot().getMean()))),
                         timers
                                 .entrySet()
                                 .stream()
                                 .map(x -> new AbstractMap.SimpleEntry<>(
-                                        x.getKey() + "-min",
+                                        x.getKey() + "-min-time",
                                                 (Object) TimeUnit.NANOSECONDS.toMillis(x.getValue().getSnapshot().getMin()))),
                         timers
                                 .entrySet()
                                 .stream()
                                 .map(x -> new AbstractMap.SimpleEntry<>(
-                                        x.getKey() + "-max",
+                                        x.getKey() + "-max-time",
                                         (Object) TimeUnit.NANOSECONDS.toMillis(x.getValue().getSnapshot().getMax())))
                 )
                 .flatMap(x -> x);
