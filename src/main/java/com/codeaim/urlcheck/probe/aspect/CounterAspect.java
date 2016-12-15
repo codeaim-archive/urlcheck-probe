@@ -2,6 +2,7 @@ package com.codeaim.urlcheck.probe.aspect;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -12,83 +13,112 @@ import org.springframework.stereotype.Component;
 @Component
 public class CounterAspect
 {
-    private final Counter activateElections;
-    private final Counter activateResultExpiries;
-    private final Counter getCandidates;
-    private final Counter metricReports;
-    private final Counter acquiredChecks;
-    private final Counter requestCheckResponses;
-    private final Counter resultExpiry;
-    private final Counter update;
+    private final Timer activateElection;
+    private final Counter activateElectionCount;
+    private final Timer activateResultExpiry;
+    private final Counter activateResultExpiryCount;
+    private final Timer getCandidates;
+    private final Counter getCandidatesCount;
+    private final Timer metricReports;
+    private final Counter metricReportsCount;
+    private final Timer acquiredChecks;
+    private final Counter acquiredChecksCount;
+    private final Timer requestCheckResponses;
+    private final Counter requestCheckResponsesCount;
+    private final Timer resultExpiry;
+    private final Counter resultExpiryCount;
+    private final Timer update;
+    private final Counter updateCount;
 
     @Autowired
     public CounterAspect(
-           MetricRegistry metricRegistry
+            MetricRegistry metricRegistry
     )
     {
-        this.activateElections = metricRegistry.counter("activate-election");
-        this.activateResultExpiries = metricRegistry.counter("activate-result-expiry");
-        this.getCandidates = metricRegistry.counter("get-candidates");
-        this.metricReports = metricRegistry.counter("metric-report");
-        this.acquiredChecks = metricRegistry.counter("acquired-checks");
-        this.requestCheckResponses = metricRegistry.counter("request-check-response");
-        this.resultExpiry = metricRegistry.counter("result-expiry");
-        this.update = metricRegistry.counter("update");
+        this.activateElection = metricRegistry.timer("activate-election");
+        this.activateElectionCount = metricRegistry.counter("activate-election-count");
+        this.activateResultExpiry = metricRegistry.timer("activate-result-expiry");
+        this.activateResultExpiryCount = metricRegistry.counter("activate-result-expiry-count");
+        this.getCandidates = metricRegistry.timer("get-candidates");
+        this.getCandidatesCount = metricRegistry.counter("get-candidates-count");
+        this.metricReports = metricRegistry.timer("metric-report");
+        this.metricReportsCount = metricRegistry.counter("metric-report-count");
+        this.acquiredChecks = metricRegistry.timer("acquired-checks");
+        this.acquiredChecksCount = metricRegistry.counter("acquired-checks-count");
+        this.requestCheckResponses = metricRegistry.timer("request-check-response");
+        this.requestCheckResponsesCount = metricRegistry.counter("request-check-response-count");
+        this.resultExpiry = metricRegistry.timer("result-expiry");
+        this.resultExpiryCount = metricRegistry.counter("result-expiry-count");
+        this.update = metricRegistry.timer("update");
+        this.updateCount = metricRegistry.counter("update-count");
     }
 
     @Around("execution(* com.codeaim.urlcheck.probe.task.ActivateElectionTask.run(..))")
     public Object aroundActivateElectionTaskRun(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
     {
-        activateElections.inc();
-        return proceedingJoinPoint.proceed();
+        activateElectionCount.inc();
+        return time(activateElection, proceedingJoinPoint);
     }
 
     @Around("execution(* com.codeaim.urlcheck.probe.task.ActivateResultExpiryTask.run(..))")
     public Object aroundActivateResultExpiryTaskRun(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
     {
-        activateResultExpiries.inc();
-        return proceedingJoinPoint.proceed();
+        activateResultExpiryCount.inc();
+        return time(activateResultExpiry, proceedingJoinPoint);
     }
 
     @Around("execution(* com.codeaim.urlcheck.probe.client.ApiClient.getCandidates(..))")
     public Object aroundApiClientGetCandidates(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
     {
-        getCandidates.inc();
-        return proceedingJoinPoint.proceed();
+        getCandidatesCount.inc();
+        return time(getCandidates, proceedingJoinPoint);
     }
 
     @Around("execution(* com.codeaim.urlcheck.probe.task.MetricReportTask.run(..))")
     public Object aroundMetricReportTaskRun(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
     {
-        metricReports.inc();
-        return proceedingJoinPoint.proceed();
+        metricReportsCount.inc();
+        return time(metricReports, proceedingJoinPoint);
     }
 
     @Around("execution(* com.codeaim.urlcheck.probe.task.ProbeTask.receiveMessage(..))")
     public Object aroundProbeTaskAcquiredChecks(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
     {
-        acquiredChecks.inc();
-        return proceedingJoinPoint.proceed();
+        acquiredChecksCount.inc();
+        return time(acquiredChecks, proceedingJoinPoint);
     }
 
     @Around("execution(* com.codeaim.urlcheck.probe.client.CheckClient.requestCheckResponse(..))")
     public Object aroundCheckClientRequestCheckResponse(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
     {
-        requestCheckResponses.inc();
-        return proceedingJoinPoint.proceed();
+        requestCheckResponsesCount.inc();
+        return time(requestCheckResponses, proceedingJoinPoint);
     }
 
     @Around("execution(* com.codeaim.urlcheck.probe.task.ResultExpiryTask.receiveMessage(..))")
     public Object aroundResultExpiryTaskResultExpiry(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
     {
-        resultExpiry.inc();
-        return proceedingJoinPoint.proceed();
+        resultExpiryCount.inc();
+        return time(resultExpiry, proceedingJoinPoint);
     }
 
     @Around("execution(* com.codeaim.urlcheck.probe.task.UpdateTask.receiveMessage(..))")
     public Object aroundUpdateTaskUpdate(ProceedingJoinPoint proceedingJoinPoint) throws Throwable
     {
-        update.inc();
-        return proceedingJoinPoint.proceed();
+        updateCount.inc();
+        return time(update, proceedingJoinPoint);
+    }
+
+    private Object time(Timer timer, ProceedingJoinPoint proceedingJoinPoint) throws Throwable
+    {
+        Timer.Context time = timer.time();
+
+        try
+        {
+            return proceedingJoinPoint.proceed();
+        } finally
+        {
+            time.stop();
+        }
     }
 }

@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import java.util.AbstractMap;
 import java.util.SortedMap;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -86,13 +87,41 @@ public class MetricReportTask
 
     private Stream<AbstractMap.SimpleEntry<String, Object>> mapTimers(SortedMap<String, Timer> timers)
     {
-        return timers
-                .entrySet()
-                .stream()
-                .map(x -> new AbstractMap.SimpleEntry<>(
-                        x.getKey(),
-                        String.valueOf(x.getValue().getCount())
-                ));
+        return Stream
+                .of(
+                        timers
+                                .entrySet()
+                                .stream()
+                                .map(x -> new AbstractMap.SimpleEntry<>(
+                                        x.getKey() + "-total-count",
+
+                                        (Object) x.getValue().getCount())),
+                        timers
+                                .entrySet()
+                                .stream()
+                                .map(x -> new AbstractMap.SimpleEntry<>(
+                                        x.getKey() + "-mean-rate",
+                                        (Object) (x.getValue().getMeanRate() * 60))),
+                        timers
+                                .entrySet()
+                                .stream()
+                                .map(x -> new AbstractMap.SimpleEntry<>(
+                                        x.getKey() + "-mean",
+                                        (Object) TimeUnit.NANOSECONDS.toMillis((long) x.getValue().getSnapshot().getMean()))),
+                        timers
+                                .entrySet()
+                                .stream()
+                                .map(x -> new AbstractMap.SimpleEntry<>(
+                                        x.getKey() + "-min",
+                                                (Object) TimeUnit.NANOSECONDS.toMillis(x.getValue().getSnapshot().getMin()))),
+                        timers
+                                .entrySet()
+                                .stream()
+                                .map(x -> new AbstractMap.SimpleEntry<>(
+                                        x.getKey() + "-max",
+                                        (Object) TimeUnit.NANOSECONDS.toMillis(x.getValue().getSnapshot().getMax())))
+                )
+                .flatMap(x -> x);
     }
 
     private Stream<AbstractMap.SimpleEntry<String, Object>> mapMeters(SortedMap<String, Meter> meters)
