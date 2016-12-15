@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 
 @Aspect
 @Component
-public class CounterAspect
+public class MetricAspect
 {
     private final Timer activateElection;
     private final Counter activateElectionCount;
@@ -31,26 +31,26 @@ public class CounterAspect
     private final Counter updateCount;
 
     @Autowired
-    public CounterAspect(
+    public MetricAspect(
             MetricRegistry metricRegistry
     )
     {
-        this.activateElection = metricRegistry.timer("activate-election");
-        this.activateElectionCount = metricRegistry.counter("activate-election-count");
-        this.activateResultExpiry = metricRegistry.timer("activate-result-expiry");
-        this.activateResultExpiryCount = metricRegistry.counter("activate-result-expiry-count");
-        this.getCandidates = metricRegistry.timer("get-candidates");
-        this.getCandidatesCount = metricRegistry.counter("get-candidates-count");
-        this.metricReports = metricRegistry.timer("metric-report");
-        this.metricReportsCount = metricRegistry.counter("metric-report-count");
-        this.acquiredChecks = metricRegistry.timer("acquired-checks");
-        this.acquiredChecksCount = metricRegistry.counter("acquired-checks-count");
-        this.requestCheckResponses = metricRegistry.timer("request-check-response");
-        this.requestCheckResponsesCount = metricRegistry.counter("request-check-response-count");
-        this.resultExpiry = metricRegistry.timer("result-expiry");
-        this.resultExpiryCount = metricRegistry.counter("result-expiry-count");
-        this.update = metricRegistry.timer("update");
-        this.updateCount = metricRegistry.counter("update-count");
+        this.activateElection = metricRegistry.timer("probe-activate-election");
+        this.activateElectionCount = metricRegistry.counter("probe-activate-election-count");
+        this.activateResultExpiry = metricRegistry.timer("probe-activate-result-expiry");
+        this.activateResultExpiryCount = metricRegistry.counter("probe-activate-result-expiry-count");
+        this.getCandidates = metricRegistry.timer("probe-get-candidates");
+        this.getCandidatesCount = metricRegistry.counter("probe-get-candidates-count");
+        this.metricReports = metricRegistry.timer("probe-metric-report");
+        this.metricReportsCount = metricRegistry.counter("probe-metric-report-count");
+        this.acquiredChecks = metricRegistry.timer("probe-acquired-checks");
+        this.acquiredChecksCount = metricRegistry.counter("probe-acquired-checks-count");
+        this.requestCheckResponses = metricRegistry.timer("probe-request-check-response");
+        this.requestCheckResponsesCount = metricRegistry.counter("probe-request-check-response-count");
+        this.resultExpiry = metricRegistry.timer("probe-result-expiry");
+        this.resultExpiryCount = metricRegistry.counter("probe-result-expiry-count");
+        this.update = metricRegistry.timer("probe-update");
+        this.updateCount = metricRegistry.counter("probe-update-count");
     }
 
     @Around("execution(* com.codeaim.urlcheck.probe.task.ActivateElectionTask.run(..))")
